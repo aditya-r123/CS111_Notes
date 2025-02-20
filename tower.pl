@@ -33,16 +33,15 @@ range([], _).
 range([H | T], N) :-
     fd_domain(H, 1, N),
     range(T, N).
-
-transpose([], []).
-transpose([F|Fs], T) :-
-    transpose(Fs, Ts),
-    lists_firsts_rests([F|Fs], [H|T], Rest),
-    transpose(Rest, T).
     
+transpose([], _, []).
+transpose([_|Rs], Cs, [Tr|Ts]) :-
+        lists_firsts_rests(Cs, Tr, Rs1),
+        transpose(Rs, Rs1, Ts).
+
 lists_firsts_rests([], [], []).
-lists_firsts_rests([[H|_]|T], [H|Firsts], Rest) :-
-    lists_firsts_rests(T, Firsts, Rest).
+lists_firsts_rests([[F|R]|Rest], [F|Fs], [R|Rs]) :-
+        lists_firsts_rests(Rest, Fs, Rs).
     
 edge([], []).
 edge([H | T], [H2 | T2]) :-
@@ -60,17 +59,17 @@ verify(L, V) :-
     V #= Count.
 
 visible_count([], 0, _).
-visible_count([HD | TL], Count, Max) :-
-    HD #> Max,
-    visible_count(TL, Count2, HD),
+visible_count([H | T], Count, Max) :-
+    H #> Max,
+    visible_count(T, Count2, H),
     Count is Count2+1.
-visible_count([HD | TL], Count, Max) :-
-    HD #< Max,
-    visible_count(TL, Count, Max).
+visible_count([H | T], Count, Max) :-
+    H #< Max,
+    visible_count(T, Count, Max).
 
-test_tower(T) :-
+test_ntower(T) :-
     statistics(cpu_time, [Start | _]),
-    tower(5, _,
+    ntower(5, _,
          counts([2,3,2,1,4],
                 [3,1,3,3,2],
                 [4,1,2,5,2],
@@ -80,8 +79,8 @@ test_tower(T) :-
 
          
 ambiguous(N, C, T1, T2) :-
-    tower(N, T1, C),
-    tower(N, T2, C),
+    ntower(N, T1, C),
+    ntower(N, T2, C),
     T1 \= T2.
 
 

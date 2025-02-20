@@ -45,7 +45,7 @@ lists_firsts_rests([[H|_]|T], [H|Firsts], Rest) :-
     lists_firsts_rests(T, Firsts, Rest).
     
 edge([], []).
-dge([H | T], [H2 | T2]) :-
+edge([H | T], [H2 | T2]) :-
     check_list(H, H2),
     edge(T, T2).
 

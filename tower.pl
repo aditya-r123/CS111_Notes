@@ -29,7 +29,7 @@ col_len([H | T], N) :-
     
 
 
-check_range([], _).
+range([], _).
 range([H | T], N) :-
     fd_domain(H, 1, N),
     range(T, N).

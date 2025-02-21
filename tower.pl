@@ -1,9 +1,3 @@
-% 1. ntower
-% N, a nonnegative integer specifying the size of the square grid.
-% T, a list of N lists, each representing a row of the square grid. Each row is represented by a list of N distinct integers from 1 through N. The corresponding columns also contain all the integers from 1 through N.
-% C, a structure with function symbol counts and arity 4. Its arguments are all lists of N integers and represent the tower counts for the top, bottom, left, and right edges, respectively.
-
-% Main rule
 ntower(N, Grid, Counts) :-
     row_len(Grid, N),
     col_len(Grid, N),
@@ -59,7 +53,7 @@ count_visible([Height | Rest], Count, Max) :-
     Height #=< Max,
     count_visible(Rest, Count, Max).
 
-plain_tower(N, Grid, Counts) :-
+plain_ntower(N, Grid, Counts) :-
     row_len(Grid, N),
     Counts = counts(Top, Bottom, Left, Right),
     validate_rows(N, Grid, Left, Right),
@@ -71,9 +65,9 @@ validate_rows(N, [Row | Rest], [LeftVisible | LeftRest], [RightVisible | RightRe
     length(Row, N),
     maplist(between(1, N), Row),
     all_unique(Row),
-    count_visible(Row, LeftVisible),
+    count_visible_plain(Row, LeftVisible),
     reverse(Row, ReversedRow),
-    count_visible(ReversedRow, RightVisible),
+    count_visible_plain(ReversedRow, RightVisible),
     validate_rows(N, Rest, LeftRest, RightRest).
 
 all_unique(List) :-
@@ -92,11 +86,9 @@ count_visible_plain([Height | Rest], Count, MaxHeight, FinalCount) :-
     Height =< MaxHeight,                                                                  
     count_visible_plain(Rest, Count, MaxHeight, FinalCount).
 
-% testing
-
 test_tower(Time) :-
     statistics(cpu_time, [Start | _]),
-    tower(5, _,
+    ntower(5, _,
          counts([2,3,2,1,4],
                 [3,1,3,3,2],
                 [4,1,2,5,2],
@@ -106,7 +98,7 @@ test_tower(Time) :-
 
 test_plain_tower(Time) :-
     statistics(cpu_time, [Start | _]),
-    plain_tower(5, _,
+    plain_ntower(5, _,
          counts([2,3,2,1,4],
                 [3,1,3,3,2],
                 [4,1,2,5,2],
@@ -117,10 +109,9 @@ test_plain_tower(Time) :-
 speedup(Ratio) :-
     test_tower(TimeOptimized),
     test_plain_tower(TimePlain),
-    Ratio is TimePlain / TimeOptimized.	       
-	       
+    Ratio is TimePlain / TimeOptimized.
 
 ambiguous(N, Counts, Grid1, Grid2) :-
-    tower(N, Grid1, Counts),
-    tower(N, Grid2, Counts),
+    ntower(N, Grid1, Counts),
+    ntower(N, Grid2, Counts),
     Grid1 \= Grid2.

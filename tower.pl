@@ -1,86 +1,126 @@
 % 1. ntower
-%N, a nonnegative integer specifying the size of the square grid.
-%T, a list of N lists, each representing a row of the square grid. Each row is represented by a list of N distinct integers from 1 through N. The corresponding columns also contain all the integers from 1 through N.
-%C, a structure with function symbol counts and arity 4. Its arguments are all lists of N integers, and represent the tower counts for the top, bottom, left, and right edges, respectively.
+% N, a nonnegative integer specifying the size of the square grid.
+% T, a list of N lists, each representing a row of the square grid. Each row is represented by a list of N distinct integers from 1 through N. The corresponding columns also contain all the integers from 1 through N.
+% C, a structure with function symbol counts and arity 4. Its arguments are all lists of N integers and represent the tower counts for the top, bottom, left, and right edges, respectively.
 
-%main rule
-ntower(N, T, C) :-
-    row_len(T, N),
-    col_len(T, N),
-    range(T, N),
-    maplist(fd_all_different, T),
-    transpose(T, T2),
-    maplist(fd_all_different, T2),
-    C = counts(Top, Bottom, Left, Right),
-    edge(T2, Top),
-    edge_reverse(T2, Bottom),
-    edge(T, Left),
-    edge_reverse(T, Right).
+% Main rule
+ntower(N, Grid, Counts) :-
+    row_len(Grid, N),
+    col_len(Grid, N),
+    valid_range(Grid, N),
+    maplist(fd_all_different, Grid),
+    transpose(Grid, GridT),
+    maplist(fd_all_different, GridT),
+    Counts = counts(Top, Bottom, Left, Right),
+    check_edges(GridT, Top),
+    check_edges_reversed(GridT, Bottom),
+    check_edges(Grid, Left),
+    check_edges_reversed(Grid, Right).
 
-
-row_len(T, N) :- 
-    length(T, N).
-
+row_len(Grid, N) :- 
+    length(Grid, N).
 
 col_len([], _).
-col_len([H | T], N) :-
-    length(H, N),
-    col_len(T, N).
-    
+col_len([Row | Rest], N) :-
+    length(Row, N),
+    col_len(Rest, N).
 
+valid_range([], _).
+valid_range([Row | Rest], N) :-
+    fd_domain(Row, 1, N),
+    valid_range(Rest, N).
 
-range([], _).
-range([H | T], N) :-
-    fd_domain(H, 1, N),
-    range(T, N).
-    
 transpose([], _, []).
-transpose([_|Rs], Cs, [Tr|Ts]) :-
-        lists_firsts_rests(Cs, Tr, Rs1),
-        transpose(Rs, Rs1, Ts).
+transpose([_|Rows], Columns, [TransposedRow | TransposedRest]) :-
+    extract_heads_tails(Columns, TransposedRow, RemainingColumns),
+    transpose(Rows, RemainingColumns, TransposedRest).
 
-lists_firsts_rests([], [], []).
-lists_firsts_rests([[F|R]|Rest], [F|Fs], [R|Rs]) :-
-        lists_firsts_rests(Rest, Fs, Rs).
-    
-edge([], []).
-edge([H | T], [H2 | T2]) :-
-    check_list(H, H2),
-    edge(T, T2).
+extract_heads_tails([], [], []).
+extract_heads_tails([[Head | Tail] | Rest], [Head | Heads], [Tail | Tails]) :-
+    extract_heads_tails(Rest, Heads, Tails).
 
-edge_reverse([], []).
-edge_reverse([H | T], [H2 | T2]) :-
-    reverse(H, RH),
-    visible_count(RH, H2),
-    edge_reverse(T, T2).
-    
-verify(L, V) :-
-    visible_count(L, Count, 0),
-    V #= Count.
+check_edges([], []).
+check_edges([Row | Rest], [Visible | VisRest]) :-
+    count_visible(Row, Visible),
+    check_edges(Rest, VisRest).
 
-visible_count([], 0, _).
-visible_count([H | T], Count, Max) :-
-    H #> Max,
-    visible_count(T, Count2, H),
-    Count is Count2+1.
-visible_count([H | T], Count, Max) :-
-    H #< Max,
-    visible_count(T, Count, Max).
+check_edges_reversed([], []).
+check_edges_reversed([Row | Rest], [Visible | VisRest]) :-
+    reverse(Row, ReversedRow),
+    count_visible(ReversedRow, Visible),
+    check_edges_reversed(Rest, VisRest).
 
-test_ntower(T) :-
+count_visible([], 0, _).
+count_visible([Height | Rest], Count, Max) :-
+    Height #> Max,
+    count_visible(Rest, CountPrev, Height),
+    Count is CountPrev + 1.
+count_visible([Height | Rest], Count, Max) :-
+    Height #=< Max,
+    count_visible(Rest, Count, Max).
+
+plain_tower(N, Grid, Counts) :-
+    row_len(Grid, N),
+    Counts = counts(Top, Bottom, Left, Right),
+    validate_rows(N, Grid, Left, Right),
+    transpose(Grid, GridT),
+    validate_rows(N, GridT, Top, Bottom).
+
+validate_rows(_, [], [], []).
+validate_rows(N, [Row | Rest], [LeftVisible | LeftRest], [RightVisible | RightRest]) :-
+    length(Row, N),
+    maplist(between(1, N), Row),
+    all_unique(Row),
+    count_visible(Row, LeftVisible),
+    reverse(Row, ReversedRow),
+    count_visible(ReversedRow, RightVisible),
+    validate_rows(N, Rest, LeftRest, RightRest).
+
+all_unique(List) :-
+    sort(List, Sorted),
+    length(List, OriginalLen),
+    length(Sorted, UniqueLen),
+    OriginalLen == UniqueLen.
+
+count_visible_plain([], Count, _, FinalCount) :- 
+    FinalCount is Count.
+count_visible_plain([Height | Rest], Count, MaxHeight, FinalCount) :-
+    Height > MaxHeight,                                 
+    NewCount is Count + 1,
+    count_visible_plain(Rest, NewCount, Height, FinalCount).
+count_visible_plain([Height | Rest], Count, MaxHeight, FinalCount) :-
+    Height =< MaxHeight,                                                                  
+    count_visible_plain(Rest, Count, MaxHeight, FinalCount).
+
+% testing
+
+test_tower(Time) :-
     statistics(cpu_time, [Start | _]),
-    ntower(5, _,
+    tower(5, _,
          counts([2,3,2,1,4],
                 [3,1,3,3,2],
                 [4,1,2,5,2],
                 [2,4,2,1,2])),
     statistics(cpu_time, [End | _]),
-    T is (End - Start).
+    Time is (End - Start).
 
-         
-ambiguous(N, C, T1, T2) :-
-    ntower(N, T1, C),
-    ntower(N, T2, C),
-    T1 \= T2.
+test_plain_tower(Time) :-
+    statistics(cpu_time, [Start | _]),
+    plain_tower(5, _,
+         counts([2,3,2,1,4],
+                [3,1,3,3,2],
+                [4,1,2,5,2],
+                [2,4,2,1,2])),
+    statistics(cpu_time, [End | _]),
+    Time is (End - Start).
 
+speedup(Ratio) :-
+    test_tower(TimeOptimized),
+    test_plain_tower(TimePlain),
+    Ratio is TimePlain / TimeOptimized.	       
+	       
 
+ambiguous(N, Counts, Grid1, Grid2) :-
+    tower(N, Grid1, Counts),
+    tower(N, Grid2, Counts),
+    Grid1 \= Grid2.

@@ -1,58 +1,68 @@
 % Main rule
+
 ntower(N, T, C) :-
     row_len(T, N),
     col_len(T, N),
-    valid_range(T, N),
+    range(T, N),
     maplist(fd_all_different, T),
-    transpose(T, TTransposed),
-    maplist(fd_all_different, TTransposed),
+    transpose(T, T2),
+    maplist(fd_all_different, T2),
     C = counts(Top, Bottom, Left, Right),
-    check_edges(TTransposed, Top),
-    check_edges_reversed(TTransposed, Bottom),
-    check_edges(T, Left),
-    check_edges_reversed(T, Right).
+    edge(T2, Top),
+    edge_reverse(T2, Bottom),
+    edge(T, Left),
+    edge_reverse(T, Right).
+
 
 row_len(T, N) :- 
     length(T, N).
 
+
 col_len([], _).
-col_len([Row | Rest], N) :-
-    length(Row, N),
-    col_len(Rest, N).
+col_len([H | T], N) :-
+    length(H, N),
+    col_len(T, N).
+    
 
-valid_range([], _).
-valid_range([Row | Rest], N) :-
-    fd_domain(Row, 1, N),
-    valid_range(Rest, N).
 
-transpose([], _, []).
-transpose([_|Rows], Columns, [TransposedRow | TransposedRest]) :-
-    extract_heads_tails(Columns, TransposedRow, RemainingColumns),
-    transpose(Rows, RemainingColumns, TransposedRest).
+range([], _).
+range([H | T], N) :-
+    fd_domain(H, 1, N),
+    range(T, N).
 
-extract_heads_tails([], [], []).
-extract_heads_tails([[Head | Tail] | Rest], [Head | Heads], [Tail | Tails]) :-
-    extract_heads_tails(Rest, Heads, Tails).
+transpose([], []).
+transpose([F|Fs], T) :-
+    transpose(Fs, Ts),
+    lists_firsts_rests([F|Fs], [H|T], Rest),
+    transpose(Rest, T).
+    
+lists_firsts_rests([], [], []).
+lists_firsts_rests([[H|_]|T], [H|Firsts], Rest) :-
+    lists_firsts_rests(T, Firsts, Rest).
+    
+edge([], []).
+edge([H | T], [H2 | T2]) :-
+    check_list(H, H2),
+    edge(T, T2).
 
-check_edges([], []).
-check_edges([Row | Rest], [Visible | VisRest]) :-
-    count_visible(Row, Visible),
-    check_edges(Rest, VisRest).
+edge_reverse([], []).
+edge_reverse([H | T], [H2 | T2]) :-
+    reverse(H, RH),
+    visible_count(RH, H2),
+    edge_reverse(T, T2).
+    
+verify(L, V) :-
+    visible_count(L, Count, 0),
+    V #= Count.
 
-check_edges_reversed([], []).
-check_edges_reversed([Row | Rest], [Visible | VisRest]) :-
-    reverse(Row, ReversedRow),
-    count_visible(ReversedRow, Visible),
-    check_edges_reversed(Rest, VisRest).
-
-count_visible([], 0, _).
-count_visible([Height | Rest], Count, Max) :-
-    Height #> Max,
-    count_visible(Rest, CountPrev, Height),
-    Count is CountPrev + 1.
-count_visible([Height | Rest], Count, Max) :-
-    Height #=< Max,
-    count_visible(Rest, Count, Max).
+visible_count([], 0, _).
+visible_count([HD | TL], Count, Max) :-
+    HD #> Max,
+    visible_count(TL, Count2, HD),
+    Count is Count2+1.
+visible_count([HD | TL], Count, Max) :-
+    HD #< Max,
+    visible_count(TL, Count, Max).
 
 % 2. plain_tower
 
@@ -123,6 +133,3 @@ ambiguous(N, C, T1, T2) :-
     tower(N, T1, C),
     tower(N, T2, C),
     T1 \= T2.
-    ntower(N, Grid1, C),
-    ntower(N, Grid2, C),
-    Grid1 \= Grid2.

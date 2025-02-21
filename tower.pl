@@ -54,67 +54,75 @@ count_visible([Height | Rest], Count, Max) :-
     Height #=< Max,
     count_visible(Rest, Count, Max).
 
+% 2. plain_tower
+
 plain_tower(N, T, C) :-
-    row_len(T, N),
-    C = counts(Top, Bottom, Left, Right),
-    validate_rows(N, T, Left, Right),
-    transpose(T, TTransposed),
-    validate_rows(N, TTransposed, Top, Bottom).
+    check_rowlen(T, N),
+    C = counts(Top, Bot, Left, Right),
+    process_rows(N, T, Left, Right),
+    transpose(T, TT),
+    process_rows(N, TT, Top, Bot).
 
-validate_rows(_, [], [], []).
-validate_rows(N, [Row | Rest], [LeftVisible | LeftRest], [RightVisible | RightRest]) :-
-    length(Row, N),
-    maplist(between(1, N), Row),
-    all_unique(Row),
-    count_visible(Row, LeftVisible),
-    reverse(Row, ReversedRow),
-    count_visible(ReversedRow, RightVisible),
-    validate_rows(N, Rest, LeftRest, RightRest).
+process_rows(_, [], [], []).
+process_rows(N, [HD | TL], [FHD | FTL], [BHD | BTL]) :-
+    length(HD, N),
+    maplist(between(1, N), HD),
+    check_unique(HD),
+    count_visible_plain(HD, 0, 0, FHD),
+    reverse(HD, RHD),
+    count_visible_plain(RHD, 0, 0, BHD),
+    process_rows(N, TL, FTL, BTL).
+    
+check_unique(L):-
+    sort(L, Sorted),
+    length(L, Len1),
+    length(Sorted, Len2),
+    Len1 == Len2.
+    
+count_visible_plain([], Acc, _, Count) :- Count is Acc.
+count_visible_plain([HD | TL], Acc, Max, Count) :-
+    % HD is visible
+    HD > Max,                                 
+    NewAcc is Acc+1,
+    count_visible_plain(TL, NewAcc, HD, Count).
+count_visible_plain([HD | TL], Acc, Max, Count) :-
+    % HD is not visible
+    HD < Max,                                                                  
+    count_visible_plain(TL, Acc, Max, Count).
 
-all_unique(List) :-
-    sort(List, Sorted),
-    length(List, OriginalLen),
-    length(Sorted, UniqueLen),
-    OriginalLen == UniqueLen.
+% Performance Tests
 
-count_visible_plain([], Count, _, FinalCount) :- 
-    FinalCount is Count.
-count_visible_plain([Height | Rest], Count, MaxHeight, FinalCount) :-
-    Height > MaxHeight,                                 
-    NewCount is Count + 1,
-    count_visible_plain(Rest, NewCount, Height, FinalCount).
-count_visible_plain([Height | Rest], Count, MaxHeight, FinalCount) :-
-    Height =< MaxHeight,                                                                  
-    count_visible_plain(Rest, Count, MaxHeight, FinalCount).
-
-% testing
-
-test_tower(Time) :-
+test_tower(T) :-
     statistics(cpu_time, [Start | _]),
-    ntower(5, _,
-           counts([2,3,2,1,4],
-                  [3,1,3,3,2],
-                  [4,1,2,5,2],
-                  [2,4,2,1,2])),
+    tower(5, _,
+         counts([2,3,2,1,4],
+                [3,1,3,3,2],
+                [4,1,2,5,2],
+                [2,4,2,1,2])),
     statistics(cpu_time, [End | _]),
-    Time is (End - Start).
+    T is (End - Start).
 
-test_plain_tower(Time) :-
+test_plain_tower(T) :-
     statistics(cpu_time, [Start | _]),
     plain_tower(5, _,
-           counts([2,3,2,1,4],
-                  [3,1,3,3,2],
-                  [4,1,2,5,2],
-                  [2,4,2,1,2])),
+         counts([2,3,2,1,4],
+                [3,1,3,3,2],
+                [4,1,2,5,2],
+                [2,4,2,1,2])),
     statistics(cpu_time, [End | _]),
-    Time is (End - Start).
+    T is (End - Start).
 
 speedup(Ratio) :-
-    test_tower(TimeOptimized),
-    test_plain_tower(TimePlain),
-    Ratio is TimePlain / TimeOptimized.
-
-ambiguous(N, C, Grid1, Grid2) :-
+    test_tower(T1),
+    test_plain_tower(T2),
+    Ratio is T2/T1.	       
+	       
+% 3. ambiguous
+    
+ambiguous(N, C, T1, T2) :-
+    tower(N, T1, C),
+    tower(N, T2, C),
+    T1 \= T2.
     ntower(N, Grid1, C),
     ntower(N, Grid2, C),
     Grid1 \= Grid2.
